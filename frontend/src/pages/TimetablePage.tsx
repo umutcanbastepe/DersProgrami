@@ -11,36 +11,24 @@ import {
   TableHead,
   TableRow,
   Paper,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  IconButton,
   Stack,
-  Chip,
 } from '@mui/material'
 import {
   ChevronLeft,
   ChevronRight,
   Print,
-  Person,
-  School,
-  Delete,
-  Save,
-  Close,
 } from '@mui/icons-material'
 import { DAYS, type Day, type Subject, type TimetableData, type Lesson, type TimeSlot, generateTimeSlots } from '../types'
 import { getWeekStart, toISODateString, fromISODateString, getWeekDays } from '../utils/dateUtils'
 import { saveTimetable, loadTimetable } from '../utils/storage'
-import { loadSubjects, getTopicsBySubject, getTopicById } from '../utils/subjectStorage'
+import { loadSubjects, getTopicById } from '../utils/subjectStorage'
+import { LessonEditDialog } from '../components/LessonEditDialog'
 
 // Varsayılan ders saatleri (08:00 - 24:00 arası, saatlik aralıklarla)
 const DEFAULT_TIME_SLOTS: TimeSlot[] = generateTimeSlots(8, 24)
+
+// Tema ile uyumlu default renk (primary.main: rgb(170, 180, 240))
+const DEFAULT_COLOR = '#aab4f0'
 
 export const TimetablePage = () => {
   const [weekStart, setWeekStart] = useState<Date>(getWeekStart())
@@ -100,25 +88,21 @@ export const TimetablePage = () => {
       id: existing?.id || crypto.randomUUID(),
       subject: existing?.subject || undefined,
       topicId: existing?.topicId || '',
-      teacher: existing?.teacher || '',
-      classroom: existing?.classroom || '',
       note: existing?.note || '',
-      color: existing?.color || '#3b82f6',
+      color: existing?.color || DEFAULT_COLOR,
     })
   }
 
-  const handleSaveLesson = () => {
-    if (!editingCell || !editForm.subject) return
+  const handleSaveLesson = (lessonData: Partial<Lesson>) => {
+    if (!editingCell || !lessonData.subject) return
 
     const key = `${editingCell.day}-${editingCell.timeSlot.start}`
     const lesson: Lesson = {
-      id: editForm.id!,
-      subject: editForm.subject as Subject,
-      topicId: editForm.topicId || undefined,
-      teacher: editForm.teacher,
-      classroom: editForm.classroom,
-      note: editForm.note,
-      color: editForm.color || '#3b82f6',
+      id: lessonData.id!,
+      subject: lessonData.subject as Subject,
+      topicId: lessonData.topicId || undefined,
+      note: lessonData.note,
+      color: lessonData.color || DEFAULT_COLOR,
     }
 
     setTimetable((prev) => new Map(prev).set(key, lesson))
@@ -293,18 +277,6 @@ export const TimetablePage = () => {
                                 </Typography>
                               ) : null
                             })()}
-                            {lesson.teacher && (
-                              <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mb: 0.5 }}>
-                                <Person sx={{ fontSize: 14 }} />
-                                <Typography variant="caption">{lesson.teacher}</Typography>
-                              </Stack>
-                            )}
-                            {lesson.classroom && (
-                              <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mb: 0.5 }}>
-                                <School sx={{ fontSize: 14 }} />
-                                <Typography variant="caption">{lesson.classroom}</Typography>
-                              </Stack>
-                            )}
                             {lesson.note && (
                               <Typography variant="caption" sx={{ fontStyle: 'italic', opacity: 0.9 }}>
                                 {lesson.note}
@@ -326,145 +298,19 @@ export const TimetablePage = () => {
         </TableContainer>
 
         {/* Edit Dialog */}
-        <Dialog
+        <LessonEditDialog
           open={!!editingCell}
-          onClose={() => setEditingCell(null)}
-          maxWidth="sm"
-          fullWidth
-        >
-          <DialogTitle>
-            <Stack direction="row" justifyContent="space-between" alignItems="center">
-              <Typography variant="h2">Ders Bilgileri</Typography>
-              <IconButton onClick={() => setEditingCell(null)} size="small">
-                <Close />
-              </IconButton>
-            </Stack>
-          </DialogTitle>
-          <DialogContent>
-            <Stack spacing={3} sx={{ mt: 1 }}>
-              <FormControl fullWidth required>
-                <InputLabel>Ders</InputLabel>
-                <Select
-                  value={editForm.subject ?? ''}
-                  onChange={(e) => {
-                    const value = e.target.value
-                    setEditForm({
-                      ...editForm,
-                      subject: value ? (value as Subject) : undefined,
-                      topicId: '', // Ders değiştiğinde konuyu sıfırla
-                    })
-                  }}
-                  label="Ders"
-                >
-                  {subjects.map((subj) => (
-                    <MenuItem key={subj} value={subj}>
-                      {subj}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
-              {editForm.subject && (
-                <FormControl fullWidth>
-                  <InputLabel>Konu</InputLabel>
-                  <Select
-                    value={editForm.topicId || ''}
-                    onChange={(e) => {
-                      setEditForm({ ...editForm, topicId: e.target.value || undefined })
-                    }}
-                    label="Konu"
-                  >
-                    <MenuItem value="">
-                      <em>Konu seçilmedi</em>
-                    </MenuItem>
-                    {getTopicsBySubject(editForm.subject).map((topic) => (
-                      <MenuItem key={topic.id} value={topic.id}>
-                        {topic.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              )}
-
-              <TextField
-                fullWidth
-                label="Öğretmen"
-                value={editForm.teacher || ''}
-                onChange={(e) => setEditForm({ ...editForm, teacher: e.target.value })}
-                placeholder="Öğretmen adı"
-                InputProps={{
-                  startAdornment: <Person sx={{ mr: 1, color: 'text.secondary' }} />,
-                }}
-              />
-
-              <TextField
-                fullWidth
-                label="Derslik"
-                value={editForm.classroom || ''}
-                onChange={(e) => setEditForm({ ...editForm, classroom: e.target.value })}
-                placeholder="Derslik numarası"
-                InputProps={{
-                  startAdornment: <School sx={{ mr: 1, color: 'text.secondary' }} />,
-                }}
-              />
-
-              <Box>
-                <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
-                  Renk
-                </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <input
-                    type="color"
-                    value={editForm.color || '#3b82f6'}
-                    onChange={(e) => setEditForm({ ...editForm, color: e.target.value })}
-                    style={{
-                      width: 60,
-                      height: 40,
-                      border: '1px solid #e2e8f0',
-                      borderRadius: 8,
-                      cursor: 'pointer',
-                    }}
-                  />
-                  <Chip
-                    label={editForm.color || '#3b82f6'}
-                    size="small"
-                    sx={{ fontFamily: 'monospace' }}
-                  />
-                </Box>
-              </Box>
-
-              <TextField
-                fullWidth
-                label="Not"
-                value={editForm.note || ''}
-                onChange={(e) => setEditForm({ ...editForm, note: e.target.value })}
-                placeholder="Ek notlar..."
-                multiline
-                rows={3}
-              />
-            </Stack>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setEditingCell(null)}>İptal</Button>
-            {editingCell && timetable.get(`${editingCell.day}-${editingCell.timeSlot.start}`) && (
-              <Button
-                color="error"
-                startIcon={<Delete />}
-                onClick={handleDeleteLesson}
-              >
-                Sil
-              </Button>
-            )}
-            <Button
-              variant="contained"
-              startIcon={<Save />}
-              onClick={handleSaveLesson}
-              disabled={!editForm.subject}
-            >
-              Kaydet
-            </Button>
-          </DialogActions>
-        </Dialog>
+          onClose={() => {
+            setEditingCell(null)
+            setEditForm({})
+          }}
+          onSave={handleSaveLesson}
+          onDelete={handleDeleteLesson}
+          initialLesson={editForm}
+          subjects={subjects}
+          hasExistingLesson={editingCell ? !!timetable.get(`${editingCell.day}-${editingCell.timeSlot.start}`) : false}
+          onFormChange={(lesson) => setEditForm(lesson)}
+        />
       </Container>
     </Box>
   )
