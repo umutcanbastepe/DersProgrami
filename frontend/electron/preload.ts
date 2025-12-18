@@ -1,8 +1,8 @@
-import { contextBridge } from 'electron'
+import { contextBridge, ipcRenderer } from 'electron'
 
 // Güvenli API'leri renderer process'e expose et
 contextBridge.exposeInMainWorld('electronAPI', {
-    // Gerekirse buraya API'ler eklenebilir
     platform: process.platform,
+    printToPDF: (fileName: string) => ipcRenderer.invoke('print-to-pdf', fileName),
 })
 

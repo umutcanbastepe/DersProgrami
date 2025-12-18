@@ -1,6 +1,7 @@
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
+import { writeFile } from 'fs/promises'
 
 // ESM için __dirname
 const __filename = fileURLToPath(import.meta.url)
@@ -25,8 +26,10 @@ app.on('window-all-closed', () => {
     }
 })
 
+let mainWindow: BrowserWindow | null = null
+
 function createWindow() {
-    const mainWindow = new BrowserWindow({
+    mainWindow = new BrowserWindow({
         width: 1200,
         height: 800,
         minWidth: 800,
@@ -43,7 +46,7 @@ function createWindow() {
 
     // Pencere hazır olduğunda göster
     mainWindow.once('ready-to-show', () => {
-        mainWindow.show()
+        mainWindow?.show()
     })
 
     // Development modunda Vite dev server'a, production'da build'e bağlan
@@ -53,5 +56,46 @@ function createWindow() {
     } else {
         mainWindow.loadFile(join(__dirname, '../dist/index.html'))
     }
+
+    // PDF oluşturma handler'ı
+    ipcMain.handle('print-to-pdf', async (_, fileName: string) => {
+        if (!mainWindow) return { success: false, error: 'Window not found' }
+
+        try {
+            // Dosya kaydetme dialog'u
+            const { filePath, canceled } = await dialog.showSaveDialog(mainWindow, {
+                title: 'PDF Olarak Kaydet',
+                defaultPath: fileName,
+                filters: [
+                    { name: 'PDF Dosyaları', extensions: ['pdf'] },
+                    { name: 'Tüm Dosyalar', extensions: ['*'] },
+                ],
+            })
+
+            if (canceled || !filePath) {
+                return { success: false, canceled: true }
+            }
+
+            // PDF oluştur
+            const pdfData = await mainWindow.webContents.printToPDF({
+                landscape: true,
+                margins: {
+                    top: 5,
+                    bottom: 5,
+                    left: 5,
+                    right: 5,
+                },
+                printBackground: true,
+            })
+
+            // Dosyaya yaz
+            await writeFile(filePath, pdfData)
+
+            return { success: true, filePath }
+        } catch (error) {
+            console.error('PDF oluşturma hatası:', error)
+            return { success: false, error: String(error) }
+        }
+    })
 }
 

@@ -109,6 +109,11 @@ export const muiTheme = createTheme({
         paper: {
           borderRadius: 16,
         },
+        root: {
+          '@media print': {
+            display: 'none',
+          },
+        },
       },
     },
     MuiAppBar: {

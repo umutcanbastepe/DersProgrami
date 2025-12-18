@@ -144,6 +144,9 @@ export const Layout = ({ children }: LayoutProps) => {
                     color: 'text.primary',
                     borderBottom: '1px solid rgb(226, 232, 240)',
                     boxShadow: 'none',
+                    '@media print': {
+                        display: 'none',
+                    },
                 }}
             >
                 <Toolbar>
@@ -170,6 +173,9 @@ export const Layout = ({ children }: LayoutProps) => {
                         lg: DRAWER_WIDTH.lg,
                     },
                     flexShrink: { sm: 0 },
+                    '@media print': {
+                        display: 'none',
+                    },
                 }}
             >
                 <Drawer
@@ -224,9 +230,25 @@ export const Layout = ({ children }: LayoutProps) => {
                         lg: `calc(100% - ${DRAWER_WIDTH.lg}px)`,
                     },
                     bgcolor: 'background.default',
+                    '@media print': {
+                        width: '100%',
+                        pt: 0,
+                        px: 0,
+                        pb: 0,
+                        margin: 0,
+                        padding: 0,
+                    },
                 }}
             >
-                <Toolbar />
+                <Toolbar
+                    sx={{
+                        '@media print': {
+                            display: 'none',
+                            height: 0,
+                            minHeight: 0,
+                        },
+                    }}
+                />
                 {children}
             </Box>
             <TopicManagementDialog
