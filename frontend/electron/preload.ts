@@ -4,5 +4,6 @@ import { contextBridge, ipcRenderer } from 'electron'
 contextBridge.exposeInMainWorld('electronAPI', {
     platform: process.platform,
     printToPDF: (fileName: string) => ipcRenderer.invoke('print-to-pdf', fileName),
+    print: (fileName: string) => ipcRenderer.invoke('print-dialog', fileName),
 })
 

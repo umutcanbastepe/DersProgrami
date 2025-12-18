@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import { writeFile } from 'fs/promises'
+import { homedir } from 'os'
 
 // ESM için __dirname
 const __filename = fileURLToPath(import.meta.url)
@@ -57,15 +58,50 @@ function createWindow() {
         mainWindow.loadFile(join(__dirname, '../dist/index.html'))
     }
 
-    // PDF oluşturma handler'ı
+    // Print dialog handler'ı (sistem print dialog'unu açar)
+    ipcMain.handle('print-dialog', async (_, fileName: string) => {
+        if (!mainWindow) return { success: false, error: 'Window not found' }
+
+        try {
+            // Sistem print dialog'unu aç
+            // Not: Electron'da print dialog'u açmak için webContents.print() kullanılır
+            // Ancak bu doğrudan PDF'e kaydetme seçeneği sunmaz
+            // Bu yüzden önce print options'ı ayarlayıp sonra print dialog'unu açıyoruz
+
+            // Print options'ı ayarla (landscape için)
+            const printOptions = {
+                silent: false,
+                printBackground: true,
+                deviceName: 'Save as PDF', // PDF'e kaydet seçeneğini öner
+            }
+
+            // Print dialog'unu aç
+            mainWindow.webContents.print(printOptions, (success, failureReason) => {
+                if (!success) {
+                    console.error('Print failed:', failureReason)
+                }
+            })
+
+            return { success: true }
+        } catch (error) {
+            console.error('Print dialog hatası:', error)
+            return { success: false, error: String(error) }
+        }
+    })
+
+    // PDF oluşturma handler'ı (doğrudan PDF oluşturur)
     ipcMain.handle('print-to-pdf', async (_, fileName: string) => {
         if (!mainWindow) return { success: false, error: 'Window not found' }
 
         try {
-            // Dosya kaydetme dialog'u
+            // Masaüstü yolunu al ve dosya adını tam yol olarak hazırla
+            const desktopPath = join(homedir(), 'Desktop')
+            const fullPath = join(desktopPath, fileName)
+
+            // Dosya kaydetme dialog'u - dosya adı otomatik doldurulur
             const { filePath, canceled } = await dialog.showSaveDialog(mainWindow, {
-                title: 'PDF Olarak Kaydet',
-                defaultPath: fileName,
+                title: 'Yazdır - PDF Olarak Kaydet',
+                defaultPath: fullPath, // Dosya adı otomatik doldurulur (tam yol ile)
                 filters: [
                     { name: 'PDF Dosyaları', extensions: ['pdf'] },
                     { name: 'Tüm Dosyalar', extensions: ['*'] },
@@ -76,9 +112,9 @@ function createWindow() {
                 return { success: false, canceled: true }
             }
 
-            // PDF oluştur
+            // PDF oluştur - varsayılan olarak landscape (yatay)
             const pdfData = await mainWindow.webContents.printToPDF({
-                landscape: true,
+                landscape: true, // Varsayılan yönlendirme: yatay
                 margins: {
                     top: 5,
                     bottom: 5,

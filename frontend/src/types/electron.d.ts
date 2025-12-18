@@ -6,6 +6,10 @@ export interface ElectronAPI {
         filePath?: string
         error?: string
     }>
+    print: (fileName: string) => Promise<{
+        success: boolean
+        error?: string
+    }>
 }
 
 declare global {

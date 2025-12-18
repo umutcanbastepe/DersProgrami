@@ -17,6 +17,7 @@ import {
   DialogContent,
   DialogContentText,
   DialogActions,
+  TextField,
 } from '@mui/material'
 import {
   ChevronLeft,
@@ -27,10 +28,9 @@ import {
 } from '@mui/icons-material'
 import { DAYS, type Day, type Subject, type TimetableData, type Lesson, type TimeSlot, generateTimeSlots } from '../types'
 import { getWeekStart, toISODateString, fromISODateString, getWeekDays } from '../utils/dateUtils'
-import { saveTimetable, loadTimetable } from '../utils/storage'
+import { saveTimetable, loadTimetable, saveStudentName, loadStudentName } from '../utils/storage'
 import { loadSubjects, getTopicById } from '../utils/subjectStorage'
 import { LessonEditDialog } from '../components/LessonEditDialog'
-import { StudentNameDialog } from '../components/StudentNameDialog'
 import { useNotification } from '../contexts/NotificationContext'
 
 // Varsayılan ders saatleri (08:00 - 24:00 arası, saatlik aralıklarla)
@@ -48,7 +48,7 @@ export const TimetablePage = () => {
   const [editForm, setEditForm] = useState<Partial<Lesson>>({})
   const [subjects, setSubjects] = useState<Subject[]>(loadSubjects())
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
-  const [studentNameDialogOpen, setStudentNameDialogOpen] = useState(false)
+  const [studentName, setStudentName] = useState<string>(loadStudentName())
 
   // Yükleme - Sayfa açıldığında kaydedilmiş çalışmayı yükle
   useEffect(() => {
@@ -64,6 +64,8 @@ export const TimetablePage = () => {
     }
     // Dersleri yükle
     setSubjects(loadSubjects())
+    // Öğrenci adını yükle
+    setStudentName(loadStudentName())
   }, [])
 
   // Dersler değiştiğinde güncelle
@@ -90,6 +92,10 @@ export const TimetablePage = () => {
       ),
     }
     saveTimetable(data)
+    // Öğrenci adını da kaydet
+    if (studentName.trim()) {
+      saveStudentName(studentName.trim())
+    }
     // Kullanıcıya bilgi ver
     showNotification('Çalışma başarıyla kaydedildi!', 'success')
   }
@@ -98,8 +104,10 @@ export const TimetablePage = () => {
   const handleClearWork = () => {
     setTimetable(new Map())
     setWeekStart(getWeekStart())
+    setStudentName('') // Öğrenci adını da temizle
     // localStorage'dan da sil
     localStorage.removeItem('timetable-data')
+    localStorage.removeItem('student-name') // Öğrenci adını da localStorage'dan sil
     setDeleteConfirmOpen(false)
     showNotification('Çalışma başarıyla silindi!', 'success')
   }
@@ -191,17 +199,16 @@ export const TimetablePage = () => {
     return `${startDay}-${endDay}${normalizedMonth}_${normalizedStudentName}_calisma_programi.pdf`
   }
 
-  const handlePrint = () => {
-    setStudentNameDialogOpen(true)
-  }
-
-  const handleStudentNameConfirm = async (studentName: string) => {
-    setStudentNameDialogOpen(false)
+  const handlePrint = async () => {
+    if (!studentName.trim()) {
+      showNotification('Lütfen öğrenci adını girin', 'warning')
+      return
+    }
 
     try {
       // Electron API kontrolü
       if (typeof window !== 'undefined' && window.electronAPI) {
-        const fileName = formatFileName(studentName)
+        const fileName = formatFileName(studentName.trim())
         const result = await window.electronAPI.printToPDF(fileName)
 
         if (result.success) {
@@ -294,6 +301,14 @@ export const TimetablePage = () => {
             >
               Çalışmayı Sil
             </Button>
+            <TextField
+              label="Öğrenci Adı"
+              value={studentName}
+              onChange={(e) => setStudentName(e.target.value)}
+              size="small"
+              sx={{ ml: 2, minWidth: 150 }}
+              placeholder="Örn: Umut"
+            />
           </Stack>
           <Button
             variant="contained"
@@ -492,13 +507,6 @@ export const TimetablePage = () => {
           </DialogActions>
         </Dialog>
 
-        {/* Öğrenci Adı Dialog'u */}
-        <StudentNameDialog
-          open={studentNameDialogOpen}
-          onClose={() => setStudentNameDialogOpen(false)}
-          onConfirm={handleStudentNameConfirm}
-          weekRange={`${weekDays[0].date.getDate()}-${weekDays[weekDays.length - 1].date.getDate()}${weekDays[0].date.toLocaleDateString('tr-TR', { month: 'long' })}`}
-        />
       </Container>
     </Box>
   )

@@ -17,18 +17,22 @@ async function buildElectron() {
         const entryPoint = join(electronDir, file)
         const outfile = join(outDir, file.replace('.ts', '.js'))
 
+        // Preload script CommonJS formatında olmalı (Electron gereksinimi)
+        // Main script ESM formatında olabilir
+        const format = file === 'preload.ts' ? 'cjs' : 'esm'
+
         await build({
             entryPoints: [entryPoint],
             bundle: true,
             platform: 'node',
             target: 'node18',
-            format: 'esm',
+            format: format,
             outfile,
             external: ['electron'],
             sourcemap: true,
         })
 
-        console.log(`✓ Built ${file}`)
+        console.log(`✓ Built ${file} (${format})`)
     }
 }
 
