@@ -172,7 +172,7 @@ export const TimetablePage = () => {
 
   const weekDays = getWeekDays(weekStart)
 
-  // Dosya adını formatla: "13-19aralık_umut_calisma_programi.pdf"
+  // Dosya adını formatla: "13-19aralık_gamze_calisma_programi.pdf"
   const formatFileName = (studentName: string): string => {
     const startDate = weekDays[0].date
     const endDate = weekDays[weekDays.length - 1].date
@@ -307,7 +307,7 @@ export const TimetablePage = () => {
               onChange={(e) => setStudentName(e.target.value)}
               size="small"
               sx={{ ml: 2, minWidth: 150 }}
-              placeholder="Örn: Umut"
+              placeholder="Örn: Gamze"
             />
           </Stack>
           <Button
