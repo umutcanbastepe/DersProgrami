@@ -45,9 +45,10 @@ function createWindow() {
         show: false, // Pencere hazır olana kadar gizle
     })
 
-    // Pencere hazır olduğunda göster
+    // Pencere hazır olduğunda göster ve maksimize et
     mainWindow.once('ready-to-show', () => {
         mainWindow?.show()
+        mainWindow?.maximize() // Pencereyi maksimize et
     })
 
     // Development modunda Vite dev server'a, production'da build'e bağlan
@@ -94,6 +95,67 @@ function createWindow() {
         if (!mainWindow) return { success: false, error: 'Window not found' }
 
         try {
+            // Sayfanın tam yüklendiğinden ve render edildiğinden emin ol
+            if (!mainWindow) return { success: false, error: 'Window not found' }
+
+            // Pencere görünür olmalı (gizli pencerelerde printToPDF çalışmayabilir)
+            if (!mainWindow.isVisible()) {
+                mainWindow.show()
+            }
+
+            // Sayfa yüklenmesini bekle
+            if (mainWindow.webContents.isLoading()) {
+                await new Promise<void>((resolve) => {
+                    mainWindow!.webContents.once('did-finish-load', resolve)
+                })
+            }
+
+            // Render'ın tamamlanması için JavaScript ile kontrol et
+            await mainWindow.webContents.executeJavaScript(`
+                new Promise((resolve) => {
+                    // DOM'un hazır olduğundan emin ol
+                    if (document.readyState === 'complete') {
+                        // requestAnimationFrame ile render'ın tamamlanmasını bekle
+                        requestAnimationFrame(() => {
+                            requestAnimationFrame(() => {
+                                // Tablo container'ın var olduğundan emin ol
+                                const tableContainer = document.querySelector('.MuiTableContainer-root');
+                                if (tableContainer && tableContainer.offsetHeight > 0) {
+                                    resolve(true);
+                                } else {
+                                    // Tablo henüz render edilmemiş, biraz daha bekle
+                                    setTimeout(() => resolve(true), 1000);
+                                }
+                            });
+                        });
+                    } else {
+                        window.addEventListener('load', () => {
+                            requestAnimationFrame(() => {
+                                requestAnimationFrame(() => {
+                                    setTimeout(() => resolve(true), 1000);
+                                });
+                            });
+                        });
+                    }
+                });
+            `)
+
+            // PDF'i dialog açılmadan ÖNCE oluştur
+            // Dialog açıldığında sayfa durumu değişebilir ve "content area is empty" hatası alınabilir
+            // Not: Margin'ler inch cinsinden (1 inch = 25.4mm)
+            // CSS'deki @page margin: 5mm ile uyumlu olması için 0.2 inch (yaklaşık 5mm) kullanıyoruz
+            const pdfData = await mainWindow.webContents.printToPDF({
+                landscape: true, // Varsayılan yönlendirme: yatay
+                margins: {
+                    top: 0.2,    // ~5mm
+                    bottom: 0.2, // ~5mm
+                    left: 0.2,   // ~5mm
+                    right: 0.2,  // ~5mm
+                },
+                printBackground: true,
+                pageSize: 'A4',
+            })
+
             // Masaüstü yolunu al ve dosya adını tam yol olarak hazırla
             const desktopPath = join(homedir(), 'Desktop')
             const fullPath = join(desktopPath, fileName)
@@ -111,18 +173,6 @@ function createWindow() {
             if (canceled || !filePath) {
                 return { success: false, canceled: true }
             }
-
-            // PDF oluştur - varsayılan olarak landscape (yatay)
-            const pdfData = await mainWindow.webContents.printToPDF({
-                landscape: true, // Varsayılan yönlendirme: yatay
-                margins: {
-                    top: 5,
-                    bottom: 5,
-                    left: 5,
-                    right: 5,
-                },
-                printBackground: true,
-            })
 
             // Dosyaya yaz
             await writeFile(filePath, pdfData)

@@ -10,6 +10,7 @@ export interface ElectronAPI {
         success: boolean
         error?: string
     }>
+    notifyReadyForPrint: () => void
 }
 
 declare global {
