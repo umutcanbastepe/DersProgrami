@@ -331,201 +331,201 @@ export const TimetablePage = () => {
               },
             }}
           >
-                <TableHead>
-                  <TableRow>
-                    <TableCell
-                      sx={{
+            <TableHead>
+              <TableRow>
+                <TableCell
+                  sx={{
+                    bgcolor: 'grey.100',
+                    fontWeight: 700,
+                    textAlign: 'center',
+                    width: 110,
+                    '@media print': {
+                      bgcolor: 'grey.100',
+                      printColorAdjust: 'exact',
+                      WebkitPrintColorAdjust: 'exact',
+                    },
+                  }}
+                >
+                  Saat
+                </TableCell>
+                {activeDays.map((day, i) => (
+                  <TableCell
+                    key={day}
+                    sx={{
+                      bgcolor: 'grey.100',
+                      fontWeight: 700,
+                      textAlign: 'center',
+                      '@media print': {
                         bgcolor: 'grey.100',
-                        fontWeight: 700,
-                        textAlign: 'center',
-                        width: 110,
-                        '@media print': {
-                          bgcolor: 'grey.100',
-                          printColorAdjust: 'exact',
-                          WebkitPrintColorAdjust: 'exact',
-                        },
-                      }}
-                    >
-                      Saat
-                    </TableCell>
-                    {activeDays.map((day, i) => (
+                        printColorAdjust: 'exact',
+                        WebkitPrintColorAdjust: 'exact',
+                      },
+                    }}
+                  >
+                    <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                      {day}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {weekDays[i].date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
+                    </Typography>
+                  </TableCell>
+                ))}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {timeSlots.map((timeSlot) => (
+                <TableRow key={`${timeSlot.start}-${timeSlot.end}`}>
+                  <TableCell
+                    sx={{
+                      bgcolor: 'grey.50',
+                      fontWeight: 600,
+                      textAlign: 'center',
+                      verticalAlign: 'top',
+                      '@media print': {
+                        bgcolor: 'grey.50',
+                        printColorAdjust: 'exact',
+                        WebkitPrintColorAdjust: 'exact',
+                      },
+                    }}
+                  >
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {timeSlot.start}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {timeSlot.end}
+                    </Typography>
+                  </TableCell>
+                  {activeDays.map((day) => {
+                    const key = `${day}-${timeSlot.start}`
+                    const lesson = timetable.get(key)
+                    const isDragTarget = dragOverKey === key
+
+                    return (
                       <TableCell
-                        key={day}
+                        key={key}
+                        onDragOver={(e) => handleDragOver(e, key)}
+                        onDragLeave={handleDragLeave}
+                        onDrop={(e) => handleDrop(e, day, timeSlot)}
+                        onDragEnd={handleDragEnd}
+                        onContextMenu={(e) => handleCellContextMenu(e, key, Boolean(lesson))}
+                        title={lesson ? 'Sağ tık: hücreyi temizle' : undefined}
                         sx={{
-                          bgcolor: 'grey.100',
-                          fontWeight: 700,
-                          textAlign: 'center',
-                          '@media print': {
-                            bgcolor: 'grey.100',
-                            printColorAdjust: 'exact',
-                            WebkitPrintColorAdjust: 'exact',
-                          },
-                        }}
-                      >
-                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                          {day}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {weekDays[i].date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
-                        </Typography>
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {timeSlots.map((timeSlot) => (
-                    <TableRow key={`${timeSlot.start}-${timeSlot.end}`}>
-                      <TableCell
-                        sx={{
-                          bgcolor: 'grey.50',
-                          fontWeight: 600,
-                          textAlign: 'center',
+                          minHeight: 80,
+                          minWidth: 130,
+                          cursor: 'default',
+                          position: 'relative',
                           verticalAlign: 'top',
+                          transition: 'all 0.15s ease',
+
+                          // Background
+                          bgcolor: isDragTarget
+                            ? 'primary.light'
+                            : lesson
+                              ? lesson.color
+                              : 'transparent',
+
+                          // Border
+                          border: isDragTarget
+                            ? '2px solid'
+                            : lesson
+                              ? '2px solid rgba(0,0,0,0.08)'
+                              : '2px dashed',
+                          borderColor: isDragTarget
+                            ? 'primary.main'
+                            : lesson
+                              ? 'rgba(0,0,0,0.08)'
+                              : 'grey.300',
+
+                          // Text color
+                          color: isDragTarget
+                            ? 'primary.contrastText'
+                            : lesson
+                              ? 'white'
+                              : 'text.secondary',
+
+                          transform: isDragTarget ? 'scale(1.02)' : 'none',
+                          boxShadow: isDragTarget ? 3 : 0,
+                          zIndex: isDragTarget ? 1 : 0,
+
+                          '&:hover': lesson
+                            ? { filter: 'brightness(0.93)' }
+                            : { bgcolor: 'grey.50', borderColor: 'grey.400' },
+
                           '@media print': {
-                            bgcolor: 'grey.50',
-                            printColorAdjust: 'exact',
+                            pageBreakInside: 'avoid',
                             WebkitPrintColorAdjust: 'exact',
+                            printColorAdjust: 'exact',
                           },
                         }}
                       >
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {timeSlot.start}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {timeSlot.end}
-                        </Typography>
-                      </TableCell>
-                      {activeDays.map((day) => {
-                        const key = `${day}-${timeSlot.start}`
-                        const lesson = timetable.get(key)
-                        const isDragTarget = dragOverKey === key
-
-                        return (
-                          <TableCell
-                            key={key}
-                            onDragOver={(e) => handleDragOver(e, key)}
-                            onDragLeave={handleDragLeave}
-                            onDrop={(e) => handleDrop(e, day, timeSlot)}
-                            onDragEnd={handleDragEnd}
-                            onContextMenu={(e) => handleCellContextMenu(e, key, Boolean(lesson))}
-                            title={lesson ? 'Sağ tık: hücreyi temizle' : undefined}
+                        {isDragTarget && !lesson && (
+                          <Box
                             sx={{
-                              minHeight: 80,
-                              minWidth: 130,
-                              cursor: 'default',
-                              position: 'relative',
-                              verticalAlign: 'top',
-                              transition: 'all 0.15s ease',
-
-                              // Background
-                              bgcolor: isDragTarget
-                                ? 'primary.light'
-                                : lesson
-                                  ? lesson.color
-                                  : 'transparent',
-
-                              // Border
-                              border: isDragTarget
-                                ? '2px solid'
-                                : lesson
-                                  ? '2px solid rgba(0,0,0,0.08)'
-                                  : '2px dashed',
-                              borderColor: isDragTarget
-                                ? 'primary.main'
-                                : lesson
-                                  ? 'rgba(0,0,0,0.08)'
-                                  : 'grey.300',
-
-                              // Text color
-                              color: isDragTarget
-                                ? 'primary.contrastText'
-                                : lesson
-                                  ? 'white'
-                                  : 'text.secondary',
-
-                              transform: isDragTarget ? 'scale(1.02)' : 'none',
-                              boxShadow: isDragTarget ? 3 : 0,
-                              zIndex: isDragTarget ? 1 : 0,
-
-                              '&:hover': lesson
-                                ? { filter: 'brightness(0.93)' }
-                                : { bgcolor: 'grey.50', borderColor: 'grey.400' },
-
-                              '@media print': {
-                                pageBreakInside: 'avoid',
-                                WebkitPrintColorAdjust: 'exact',
-                                printColorAdjust: 'exact',
-                              },
+                              position: 'absolute',
+                              inset: 0,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              pointerEvents: 'none',
                             }}
                           >
-                            {isDragTarget && !lesson && (
-                              <Box
-                                sx={{
-                                  position: 'absolute',
-                                  inset: 0,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  pointerEvents: 'none',
-                                }}
-                              >
-                                <Typography variant="caption" sx={{ fontWeight: 700, opacity: 0.8 }}>
-                                  Bırak
+                            <Typography variant="caption" sx={{ fontWeight: 700, opacity: 0.8 }}>
+                              Bırak
+                            </Typography>
+                          </Box>
+                        )}
+                        {lesson ? (
+                          <Box sx={{ p: 0.25 }}>
+                            <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.25, lineHeight: 1.3 }}>
+                              {lesson.subject}
+                            </Typography>
+                            {lesson.topicId && (() => {
+                              const topic = getTopicById(lesson.topicId)
+                              return topic ? (
+                                <Typography
+                                  variant="caption"
+                                  sx={{ opacity: 0.9, display: 'block', mb: 0.25, lineHeight: 1.3 }}
+                                >
+                                  📚 {topic.name}
                                 </Typography>
-                              </Box>
-                            )}
-                            {lesson ? (
-                              <Box sx={{ p: 0.25 }}>
-                                <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.25, lineHeight: 1.3 }}>
-                                  {lesson.subject}
-                                </Typography>
-                                {lesson.topicId && (() => {
-                                  const topic = getTopicById(lesson.topicId)
-                                  return topic ? (
-                                    <Typography
-                                      variant="caption"
-                                      sx={{ opacity: 0.9, display: 'block', mb: 0.25, lineHeight: 1.3 }}
-                                    >
-                                      📚 {topic.name}
-                                    </Typography>
-                                  ) : null
-                                })()}
-                                {lesson.note && (
-                                  <Typography
-                                    variant="caption"
-                                    sx={{ fontStyle: 'italic', opacity: 0.85, display: 'block', lineHeight: 1.3 }}
-                                  >
-                                    {lesson.note}
-                                  </Typography>
-                                )}
-                              </Box>
-                            ) : !isDragTarget ? (
+                              ) : null
+                            })()}
+                            {lesson.note && (
                               <Typography
                                 variant="caption"
-                                sx={{
-                                  textAlign: 'center',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  gap: 0.5,
-                                  opacity: 0.45,
-                                  height: '100%',
-                                  minHeight: 48,
-                                  '@media print': { display: 'none' },
-                                }}
+                                sx={{ fontStyle: 'italic', opacity: 0.85, display: 'block', lineHeight: 1.3 }}
                               >
-                                <DragIndicator sx={{ fontSize: 12 }} />
-                                Paletten sürükleyin
+                                {lesson.note}
                               </Typography>
-                            ) : null}
-                          </TableCell>
-                        )
-                      })}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                            )}
+                          </Box>
+                        ) : !isDragTarget ? (
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              textAlign: 'center',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: 0.5,
+                              opacity: 0.45,
+                              height: '100%',
+                              minHeight: 48,
+                              '@media print': { display: 'none' },
+                            }}
+                          >
+                            <DragIndicator sx={{ fontSize: 12 }} />
+                            Paletten sürükleyin
+                          </Typography>
+                        ) : null}
+                      </TableCell>
+                    )
+                  })}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
 
         <Menu
           open={cellContextMenu !== null}

@@ -29,46 +29,52 @@ export const setSubjectColor = (subject: string, color: string): void => {
     saveSubjectColors(map)
 }
 
-// Varsayılan dersler
+/**
+ * Türkiye Yüzyılı Maarif Modeli — ortaöğretim (lise) çerçevesinde yaygın ders adları.
+ * Konu başlıkları ünite/tema düzeyinde; öğretim programındaki yapıya yaklaştırılmıştır.
+ * İlk yüklemede localStorage'a yazılır; kullanıcı sonra düzenleyebilir.
+ */
 const DEFAULT_SUBJECTS: Subject[] = [
+    'Türk Dili ve Edebiyatı',
     'Matematik',
-    'Türkçe',
     'Fizik',
     'Kimya',
     'Biyoloji',
     'Tarih',
     'Coğrafya',
-    'Edebiyat',
+    'T.C. İnkılap Tarihi ve Atatürkçülük',
+    'Felsefe',
+    'Din Kültürü ve Ahlak Bilgisi',
     'İngilizce',
     'Almanca',
-    'Fransızca',
-    'Felsefe',
-    'Beden Eğitimi',
-    'Müzik',
-    'Resim',
-    'Bilgisayar',
-    'Din Kültürü',
 ]
 
-/**
- * Her ders için varsayılan konu adları (MEB müfredatına uygun örnek başlıklar).
- * İlk yüklemede localStorage'a yazılır; kullanıcı sonra düzenleyebilir.
- */
 const DEFAULT_TOPIC_NAMES_BY_SUBJECT: Record<string, string[]> = {
+    'Türk Dili ve Edebiyatı': [
+        'Dil ve İletişim',
+        'Sözcükte ve Cümlede Anlam',
+        'Paragraf',
+        'Anlatım Türleri',
+        'Yazım ve Noktalama',
+        'Şiir Bilgisi ve Nazım Biçimleri',
+        'Halk Edebiyatı',
+        'Divan Edebiyatı',
+        'Tanzimat ve Servet-i Fünûn',
+        'Milli Edebiyat ve Cumhuriyet Dönemi',
+        'Roman ve Hikâye',
+        'Tiyatro',
+        'Deneme ve Öykü',
+        'Dünya Edebiyatından Seçmeler',
+        'Sözlü ve Yazılı Anlatım',
+        'Soru Çözümü',
+    ],
     Matematik: [
-        'Temel Kavramlar',
-        'Sayılar',
-        'Rasyonel ve İrrasyonel Sayılar',
+        'Sayılar ve Temsiller',
+        'Temel Kavramlar ve Cebirsel İfadeler',
         'Üslü ve Köklü İfadeler',
-        'Çarpanlara Ayırma',
-        'Oran ve Orantı',
         'Denklem ve Eşitsizlikler',
-        'Mutlak Değer',
         'Fonksiyonlar',
-        'İkinci Dereceden Denklemler',
-        'Parabol',
-        'Üçgenler',
-        'Çokgenler ve Dörtgenler',
+        'Üçgenler ve Çokgenler',
         'Çember ve Daire',
         'Analitik Geometri',
         'Trigonometri',
@@ -76,47 +82,23 @@ const DEFAULT_TOPIC_NAMES_BY_SUBJECT: Record<string, string[]> = {
         'Limit ve Süreklilik',
         'Türev',
         'İntegral',
-        'Olasılık',
-        'İstatistik',
-        'Veri Analizi',
-        'Soru Çözümü',
-    ],
-    Türkçe: [
-        'Sözcükte Anlam',
-        'Cümlede Anlam',
-        'Paragraf',
-        'Anlatım Biçimleri',
-        'Sözcük Türleri',
-        'Cümle Türleri',
-        'Yazım Kuralları',
-        'Noktalama İşaretleri',
-        'Anlatım Bozuklukları',
-        'Söz Sanatları',
-        'Şiir Bilgisi',
-        'Metin Türleri',
-        'Yazılı Anlatım',
-        'Sözlü Anlatım',
-        'Dinleme/İzleme',
-        'Okuma Stratejileri',
+        'Olasılık ve İstatistik',
+        'Veri ve Modelleme',
         'Soru Çözümü',
     ],
     Fizik: [
-        'Fizik Bilimine Giriş',
+        'Fizik Bilimine Giriş ve Ölçme',
         'Madde ve Özellikleri',
         'Hareket ve Kuvvet',
-        'İş, Güç, Enerji',
+        'İş, Enerji ve Güç',
         'Basit Makineler',
         'Isı ve Sıcaklık',
-        'Genleşme',
-        'Elektrostatik',
-        'Elektrik Akımı',
-        'Manyetizma',
-        'Basınç',
-        'Kaldırma Kuvveti',
+        'Elektrostatik ve Elektrik Akımı',
+        'Manyetizma ve Elektromanyetizma',
+        'Basınç ve Kaldırma Kuvveti',
         'Dalgalar',
         'Optik',
-        'Atom Modelleri',
-        'Modern Fizik',
+        'Atom ve Modern Fizik',
         'Soru Çözümü',
     ],
     Kimya: [
@@ -125,135 +107,68 @@ const DEFAULT_TOPIC_NAMES_BY_SUBJECT: Record<string, string[]> = {
         'Kimyasal Türler Arası Etkileşimler',
         'Maddenin Halleri',
         'Kimyasal Hesaplamalar',
-        'Karışımlar',
+        'Karışımlar ve Çözünmeler',
         'Asitler, Bazlar ve Tuzlar',
         'Kimya ve Enerji',
         'Tepkimelerde Hız ve Denge',
         'Kimya ve Elektrik',
-        'Karbon Kimyasına Giriş',
-        'Organik Bileşikler',
-        'Güncel Kimya Konuları',
+        'Karbon Kimyası ve Organik Bileşikler',
+        'Güncel Kimya Uygulamaları',
         'Soru Çözümü',
     ],
     Biyoloji: [
         'Canlıların Ortak Özellikleri',
-        'Hücre Bölünmeleri',
-        'Kalıtım',
+        'Hücre ve Bölünmeler',
+        'Kalıtım ve Evrim',
         'Ekosistem Ekolojisi',
-        'Güncel Çevre Sorunları',
-        'Canlıların Sınıflandırılması',
-        'Hücre',
-        'Canlıların Çeşitliliği',
+        'Canlıların Sınıflandırılması ve Çeşitliliği',
         'Fotosentez ve Solunum',
         'İnsan Fizyolojisi',
-        'Sinir ve Hormon Sistemleri',
+        'Sinir ve Endokrin Sistemleri',
         'Üreme ve Gelişim',
-        'Komünite ve Popülasyon Ekolojisi',
-        'Canlılar ve Çevre',
+        'Popülasyon ve Komünite Ekolojisi',
+        'Çevre ve Biyoteknoloji',
         'Soru Çözümü',
     ],
     Tarih: [
-        'Tarih ve Zaman',
-        'İnsanın İlk Dönemleri',
-        'Orta Çağda Dünya',
+        'Tarih Bilimi',
+        'İlk Çağ Uygarlıkları',
+        'İslam Tarihi ve Türkler',
         'Yerleşme ve Devletler',
-        'Beylikten Devlete Osmanlı Siyaseti',
-        'Sultan ve Osmanlı Merkez Teşkilatı',
-        'Klasik Çağda Osmanlı Toplumu',
-        'Değişen Dünya Dengeleri Karşısında Osmanlı',
-        'Devrimler Çağında Değişen Devlet–Toplum İlişkileri',
+        'Osmanlı Beylikten İmparatorluğa',
+        'Değişen Dünya Dengeleri ve Osmanlı',
         'Sermaye ve Emperyalizm',
-        '20. Yüzyıl Başlarında Osmanlı Devleti',
+        '20. Yüzyıl Başlarında Osmanlı',
         'Milli Mücadele',
-        'Atatürkçülük ve Türkiye Cumhuriyeti',
-        'İkinci Dünya Savaşı Sürecinde Türkiye ve Dünya',
-        'Soğuk Savaş Dönemi',
+        'Atatürk Dönemi ve Türkiye Cumhuriyeti',
+        'İkinci Dünya Savaşı ve Soğuk Savaş',
         'Küreselleşen Dünya',
         'Soru Çözümü',
     ],
     Coğrafya: [
-        'Doğal Sistemler',
-        'İklim Bilgisi',
-        'Yer Şekilleri',
+        'Coğrafya Bilimi ve Doğal Sistemler',
+        'İklim ve Yer Şekilleri',
+        'İç ve Dış Kuvvetler',
         'Su Kaynakları',
         'Nüfus ve Yerleşme',
         'Ekonomik Faaliyetler',
-        'Bölgeler ve Ülkeler',
+        'Türkiye\'nin Fiziki Coğrafyası',
+        'Türkiye\'nin Beşeri ve Ekonomik Coğrafyası',
         'Çevre ve Sürdürülebilirlik',
-        'Harita Bilgisi',
-        'Türkiye\'nin Coğrafi Konumu',
-        'Türkiye\'nin İklimi',
-        'Türkiye\'nin Yer Şekilleri',
-        'Türkiye\'nin Ekonomisi',
-        'Küresel Ortam',
+        'Küresel Ortam ve Bölgeler',
+        'Harita ve Veri Okuma',
         'Soru Çözümü',
     ],
-    Edebiyat: [
-        'Şiir Bilgisi',
-        'Nazım Biçimleri',
-        'Divan Edebiyatı',
-        'Halk Edebiyatı',
-        'Tanzimat Edebiyatı',
-        'Servet-i Fünun ve Fecr-i Ati',
-        'Milli Edebiyat Dönemi',
-        'Cumhuriyet Dönemi Türk Şiiri',
-        'Roman ve Hikâye',
-        'Tiyatro',
-        'Deneme ve Makale',
-        'Anı ve Gezi Yazısı',
-        'Masal ve Fabl',
-        'Dünya Edebiyatından Seçmeler',
-        'Soru Çözümü',
-    ],
-    İngilizce: [
-        'Greetings and Introductions',
-        'Daily Routines',
-        'School Life',
-        'Hobbies and Free Time',
-        'Food and Drinks',
-        'Health and Body',
-        'Travel and Transportation',
-        'Nature and Environment',
-        'Technology and Media',
-        'Past Experiences',
-        'Future Plans',
-        'Comparisons',
-        'Modal Verbs',
-        'Tenses (Present, Past, Future)',
-        'Reading Comprehension',
-        'Writing (Paragraph, E-mail)',
-        'Soru Çözümü',
-    ],
-    Almanca: [
-        'Begrüßung und Vorstellung',
-        'Familie und Freunde',
-        'Schule und Beruf',
-        'Freizeit und Hobbys',
-        'Essen und Trinken',
-        'Gesundheit',
-        'Reisen',
-        'Grammatik: Artikel und Kasus',
-        'Präsens und Perfekt',
-        'Modalverben',
-        'Adjektive und Steigerung',
-        'Leseverstehen',
-        'Hörverstehen',
-        'Schriftlicher Ausdruck',
-        'Soru Çözümü',
-    ],
-    Fransızca: [
-        'Salutations et présentations',
-        'La famille et les amis',
-        'À l\'école',
-        'Les loisirs',
-        'La nourriture',
-        'La santé',
-        'Les voyages',
-        'Grammaire: articles et pronoms',
-        'Présent et passé composé',
-        'Lecture',
-        'Écoute',
-        'Expression écrite',
+    'T.C. İnkılap Tarihi ve Atatürkçülük': [
+        'Osmanlı Devleti\'nin Son Dönemi',
+        'Mondros Ateşkesi ve İşgaller',
+        'Milli Mücadele Dönemi',
+        'Atatürk İlke ve İnkılapları',
+        'Atatürk Dönemi Türk Dış Politikası',
+        'İnönü Dönemi ve İkinci Dünya Savaşı',
+        'Çok Partili Hayata Geçiş',
+        'Atatürkçülük ve Türkiye Cumhuriyeti\'nin Temel İlkeleri',
+        'Güncel Türkiye ve Dünya',
         'Soru Çözümü',
     ],
     Felsefe: [
@@ -265,80 +180,49 @@ const DEFAULT_TOPIC_NAMES_BY_SUBJECT: Record<string, string[]> = {
         'Din Felsefesi',
         'Sanat Felsefesi',
         'Bilim Felsefesi',
-        'Felsefe Tarihi (Antik Çağ)',
-        'Felsefe Tarihi (Orta Çağ ve Rönesans)',
-        'Felsefe Tarihi (Aydınlanma)',
-        'Çağdaş Felsefe',
+        'Felsefe Tarihi',
         'Mantık',
-        'Psikoloji ve Felsefe',
+        'Psikoloji ve Sosyolojiye Giriş',
         'Soru Çözümü',
     ],
-    'Beden Eğitimi': [
-        'Isınma ve Soğuma',
-        'Koordinasyon ve Denge',
-        'Atletizm',
-        'Takım Sporları (Futbol, Basketbol)',
-        'Voleybol',
-        'Hentbol',
-        'Badminton',
-        'Cimnastik',
-        'Sağlıklı Yaşam ve Beslenme',
-        'İlk Yardım Temelleri',
-        'Oyun ve Rekreasyon',
-        'Fitness ve Kondisyon',
-        'Soru Çözümü',
-    ],
-    Müzik: [
-        'Müzik Teorisi (Nota, Ritim)',
-        'Ses ve Perde',
-        'Majör ve Minör',
-        'Enstrüman Bilgisi',
-        'Türk Müziği',
-        'Batı Müziği Tarihi',
-        'Çağdaş Müzik',
-        'Müzik Dinletisi ve Eleştirisi',
-        'Koro ve Orkestra',
-        'Besteciler ve Eserler',
-        'Soru Çözümü',
-    ],
-    Resim: [
-        'Temel Çizim ve Tasarım',
-        'Renk Bilgisi',
-        'Perspektif',
-        'Kompozisyon',
-        'Sanat Tarihi (Ön Rönesans–Rönesans)',
-        'Osmanlı ve Türk Resim Sanatı',
-        'Çağdaş Sanat Akımları',
-        'Heykel ve Seramik',
-        'Grafik Tasarım',
-        'Dijital Sanat',
-        'Soru Çözümü',
-    ],
-    Bilgisayar: [
-        'Bilgisayarın Temelleri',
-        'İşletim Sistemleri',
-        'İnternet ve Ağ Güvenliği',
-        'Ofis Programları',
-        'Algoritma ve Akış Diyagramları',
-        'Programlamaya Giriş',
-        'Veri Yapılarına Giriş',
-        'Web Tasarımı (HTML/CSS)',
-        'Veritabanı Temelleri',
-        'Yapay Zekâ ve Etik',
-        'Siber Güvenlik',
-        'Soru Çözümü',
-    ],
-    'Din Kültürü': [
-        'İslam ve İbadet',
+    'Din Kültürü ve Ahlak Bilgisi': [
+        'İlahiyat Bilimine Giriş',
         'İman Esasları',
-        'İbadetler (Namaz, Oruç, Zekât, Hac)',
-        'Hz. Muhammed\'in Hayatı',
+        'İbadet',
         'Kur\'an-ı Kerim ve Temel Kavramlar',
+        'Hz. Muhammed\'in Hayatı',
         'Ahlak ve Erdem',
-        'Vatandaşlık ve Hoşgörü',
+        'İslam Düşüncesi ve Yorumlar',
         'Dünya Dinleri',
-        'İslam Düşüncesinde Yorumlar',
-        'Güncel Dini Meseleler',
+        'Güncel Dini ve Ahlaki Meseleler',
+        'Hoşgörü ve Vatandaşlık',
+        'Soru Çözümü',
+    ],
+    İngilizce: [
+        'Communication and Interaction',
+        'School and Daily Life',
+        'Past and Future Experiences',
+        'Science, Technology and Innovation',
+        'Environment and Sustainability',
+        'Global Issues and Culture',
+        'Reading Comprehension Strategies',
+        'Listening and Note-taking',
+        'Writing (Paragraph, Essay, E-mail)',
+        'Speaking and Presentation',
+        'Grammar in Context',
+        'Soru Çözümü',
+    ],
+    Almanca: [
+        'Kommunikation und Alltag',
+        'Schule, Beruf und Zukunft',
+        'Familie, Freunde und Gesundheit',
+        'Reisen und Freizeit',
+        'Grammatik: Artikel, Kasus, Zeitformen',
+        'Modalverben und Nebensätze',
+        'Leseverstehen',
+        'Hörverstehen',
+        'Mündliche und schriftliche Produktion',
+        'Kultur und Länderkunde',
         'Soru Çözümü',
     ],
 }
@@ -535,6 +419,54 @@ export const addTopicToSubject = (subject: Subject, topicName: string): Topic =>
     allTopics[subject].push(newTopic)
     saveSubjectTopics(allTopics)
     return newTopic
+}
+
+export interface BulkImportSubjectsResult {
+    addedSubjects: number
+    addedTopics: number
+    skippedDuplicateTopics: number
+    skippedEmptyRows: number
+}
+
+/**
+ * CSV/TSV’den gelen satırları işler: yeni dersleri ekler, mevcut derslere konu ekler (aynı isimli konuyu atlar).
+ */
+export function bulkImportSubjectsAndTopics(
+    rows: Array<{ subject: string; topic: string }>
+): BulkImportSubjectsResult {
+    let addedSubjects = 0
+    let addedTopics = 0
+    let skippedDuplicateTopics = 0
+    let skippedEmptyRows = 0
+
+    for (const { subject: rawS, topic: rawT } of rows) {
+        const subject = rawS.trim()
+        const topic = rawT.trim()
+        if (!subject || !topic) {
+            skippedEmptyRows++
+            continue
+        }
+
+        if (!loadSubjects().includes(subject as Subject)) {
+            const created = addSubject(subject)
+            if (created) addedSubjects++
+        }
+
+        const existing = getTopicsBySubject(subject as Subject)
+        if (existing.some((t) => t.name.trim().toLowerCase() === topic.toLowerCase())) {
+            skippedDuplicateTopics++
+            continue
+        }
+        addTopicToSubject(subject as Subject, topic)
+        addedTopics++
+    }
+
+    return {
+        addedSubjects,
+        addedTopics,
+        skippedDuplicateTopics,
+        skippedEmptyRows,
+    }
 }
 
 /**

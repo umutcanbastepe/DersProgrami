@@ -23,10 +23,10 @@ import { TopicManagementDialog } from './TopicManagementDialog'
 
 /** Sol çekmece genişliği */
 const DRAWER_WIDTH = {
-    xs: 320,
-    sm: 320,
-    md: 320,
-    lg: 320,
+    xs: 240,
+    sm: 260,
+    md: 280,
+    lg: 300,
 }
 
 interface LayoutProps {

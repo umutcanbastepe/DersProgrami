@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
     Drawer,
     Box,
@@ -19,6 +19,7 @@ import {
     DialogContent,
     DialogContentText,
     DialogActions,
+    Alert,
 } from '@mui/material'
 import {
     Add,
@@ -29,6 +30,7 @@ import {
     Subject as SubjectIcon,
     Check,
     Clear,
+    UploadFile,
 } from '@mui/icons-material'
 import type { Subject, Topic } from '../types'
 import {
@@ -40,7 +42,9 @@ import {
     addTopicToSubject,
     updateTopic,
     deleteTopic,
+    bulkImportSubjectsAndTopics,
 } from '../utils/subjectStorage'
+import { parseBulkImportText, downloadBulkImportTemplate } from '../utils/subjectBulkImport'
 import { getSubjectColor } from '../utils/colors'
 import { useNotification } from '../contexts/NotificationContext'
 
@@ -73,6 +77,13 @@ export const TopicManagementDialog = ({
     // Confirm delete state
     const [confirmDeleteSubject, setConfirmDeleteSubject] = useState<Subject | null>(null)
     const [confirmDeleteTopic, setConfirmDeleteTopic] = useState<Topic | null>(null)
+
+    const [bulkImportOpen, setBulkImportOpen] = useState(false)
+    const [bulkImportPreview, setBulkImportPreview] = useState<{
+        rows: Array<{ subject: string; topic: string }>
+        errors: string[]
+    } | null>(null)
+    const bulkFileInputRef = useRef<HTMLInputElement | null>(null)
 
     useEffect(() => {
         if (open) {
@@ -180,6 +191,53 @@ export const TopicManagementDialog = ({
         setConfirmDeleteTopic(null)
     }
 
+    const handleOpenBulkImport = () => {
+        setBulkImportPreview(null)
+        setBulkImportOpen(true)
+    }
+
+    const handleCloseBulkImport = () => {
+        setBulkImportOpen(false)
+        setBulkImportPreview(null)
+        if (bulkFileInputRef.current) bulkFileInputRef.current.value = ''
+    }
+
+    const handleBulkFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+        void file
+            .text()
+            .then((text) => {
+                const { rows, errors } = parseBulkImportText(text)
+                setBulkImportPreview({ rows, errors })
+                if (rows.length === 0) {
+                    showNotification(errors[0] ?? 'Dosyadan geçerli satır okunamadı.', 'error')
+                }
+            })
+            .catch(() => {
+                showNotification('Dosya okunamadı.', 'error')
+            })
+        e.target.value = ''
+    }
+
+    const handleApplyBulkImport = () => {
+        if (!bulkImportPreview?.rows.length) return
+        const result = bulkImportSubjectsAndTopics(bulkImportPreview.rows)
+        const parts = [
+            result.addedSubjects ? `${result.addedSubjects} yeni ders` : '',
+            result.addedTopics ? `${result.addedTopics} yeni konu` : '',
+            result.skippedDuplicateTopics ? `${result.skippedDuplicateTopics} yinelenen atlandı` : '',
+        ].filter(Boolean)
+        showNotification(parts.join(' · ') || 'Yeni ekleme yapılmadı (tümü zaten vardı).', 'success')
+        const nextSubjects = loadSubjects()
+        setSubjects(nextSubjects)
+        if (selectedSubject) {
+            setTopics(getTopicsBySubject(selectedSubject))
+        }
+        onSubjectsChange?.()
+        handleCloseBulkImport()
+    }
+
     return (
         <Drawer
             anchor="right"
@@ -221,9 +279,16 @@ export const TopicManagementDialog = ({
                         Ders ve Konu Yönetimi
                     </Typography>
                 </Box>
-                <IconButton onClick={onClose} sx={{ color: 'white' }}>
-                    <Close />
-                </IconButton>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+                    <Tooltip title="Dosyadan toplu içe aktar (CSV / metin)">
+                        <IconButton onClick={handleOpenBulkImport} sx={{ color: 'white' }} aria-label="Toplu içe aktar">
+                            <UploadFile />
+                        </IconButton>
+                    </Tooltip>
+                    <IconButton onClick={onClose} sx={{ color: 'white' }} aria-label="Kapat">
+                        <Close />
+                    </IconButton>
+                </Box>
             </Box>
 
             {/* Two-column body */}
@@ -594,6 +659,71 @@ export const TopicManagementDialog = ({
                     Kapat
                 </Button>
             </Box>
+
+            <input
+                ref={bulkFileInputRef}
+                type="file"
+                accept=".csv,.txt,text/csv,text/plain"
+                hidden
+                onChange={handleBulkFileSelected}
+            />
+
+            {/* Toplu içe aktarma */}
+            <Dialog
+                open={bulkImportOpen}
+                onClose={handleCloseBulkImport}
+                maxWidth="sm"
+                fullWidth
+            >
+                <DialogTitle>Toplu ders ve konu içe aktarma</DialogTitle>
+                <DialogContent>
+                    <DialogContentText component="div" sx={{ mb: 2 }}>
+                        Excel veya Notepad ile iki sütunlu bir dosya hazırlayın:{' '}
+                        <strong>ilk sütun Ders</strong>, <strong>ikinci sütun Konu</strong>. Her satırda bir konu;
+                        aynı ders birden çok satırda tekrarlanabilir. Ayraç olarak virgül, noktalı virgül veya sekme
+                        (Excel’den kopyala-yapıştır) kullanılabilir. İlk satır başlık olabilir:{' '}
+                        <code>Ders,Konu</code>
+                    </DialogContentText>
+                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
+                        <Button variant="outlined" size="small" onClick={() => downloadBulkImportTemplate()}>
+                            Örnek şablon indir
+                        </Button>
+                        <Button variant="contained" size="small" onClick={() => bulkFileInputRef.current?.click()}>
+                            Dosya seç
+                        </Button>
+                    </Stack>
+                    {bulkImportPreview && (
+                        <>
+                            {bulkImportPreview.errors.length > 0 && (
+                                <Alert severity="warning" sx={{ mb: 1 }}>
+                                    Bazı satırlarda uyarı (yine de geçerli satırlar içe aktarılabilir):
+                                    <Box
+                                        component="ul"
+                                        sx={{ m: 0.5, pl: 2, maxHeight: 120, overflow: 'auto', fontSize: '0.8rem' }}
+                                    >
+                                        {bulkImportPreview.errors.map((err, i) => (
+                                            <li key={i}>{err}</li>
+                                        ))}
+                                    </Box>
+                                </Alert>
+                            )}
+                            <Typography variant="body2" color="text.secondary">
+                                Okunan geçerli satır: <strong>{bulkImportPreview.rows.length}</strong>
+                            </Typography>
+                        </>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseBulkImport}>İptal</Button>
+                    <Button
+                        variant="contained"
+                        onClick={handleApplyBulkImport}
+                        disabled={!bulkImportPreview?.rows.length}
+                    >
+                        İçe aktar
+                    </Button>
+                </DialogActions>
+            </Dialog>
 
             {/* Ders silme onay diyalogu */}
             <Dialog
