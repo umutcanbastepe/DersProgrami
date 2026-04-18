@@ -9,24 +9,24 @@ import {
     Typography,
     IconButton,
     ListItem,
-    ListItemButton,
     ListItemIcon,
-    ListItemText,
     CssBaseline,
 } from '@mui/material'
 import {
     Menu as MenuIcon,
     CalendarToday,
-    MenuBook,
 } from '@mui/icons-material'
+import type { Subject } from '../types'
+import { loadSubjects, loadSubjectTopics } from '../utils/subjectStorage'
+import { SubjectPalette } from './SubjectPalette'
 import { TopicManagementDialog } from './TopicManagementDialog'
 
-// Responsive drawer widths
+/** Sol çekmece genişliği */
 const DRAWER_WIDTH = {
-    xs: 200,
-    sm: 220,
-    md: 240,
-    lg: 260,
+    xs: 320,
+    sm: 320,
+    md: 320,
+    lg: 320,
 }
 
 interface LayoutProps {
@@ -35,37 +35,41 @@ interface LayoutProps {
 
 export const Layout = ({ children }: LayoutProps) => {
     const [mobileOpen, setMobileOpen] = useState(false)
-    const [topicDialogOpen, setTopicDialogOpen] = useState(false)
     const [currentDateTime, setCurrentDateTime] = useState(new Date())
+    const [subjects, setSubjects] = useState<Subject[]>(() => loadSubjects())
+    const [subjectTopics, setSubjectTopics] = useState(() => loadSubjectTopics())
+    const [managementOpen, setManagementOpen] = useState(false)
 
-    // Tarih ve saati her saniye güncelle
     useEffect(() => {
         const timer = setInterval(() => {
             setCurrentDateTime(new Date())
         }, 1000)
-
         return () => clearInterval(timer)
+    }, [])
+
+    useEffect(() => {
+        const sync = () => {
+            setSubjects(loadSubjects())
+            setSubjectTopics(loadSubjectTopics())
+        }
+        window.addEventListener('subjects-changed', sync)
+        return () => window.removeEventListener('subjects-changed', sync)
     }, [])
 
     const handleDrawerToggle = () => {
         setMobileOpen(!mobileOpen)
     }
 
-    const menuItems = [
-        {
-            text: 'Ders Programı',
-            icon: <CalendarToday />,
-            onClick: () => { },
-        },
-        {
-            text: 'Ders - Konu Yönetimi',
-            icon: <MenuBook />,
-            onClick: () => setTopicDialogOpen(true),
-        },
-    ]
-
     const drawer = (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <Box
+            sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                height: '100%',
+                minHeight: 0,
+                overflow: 'hidden',
+            }}
+        >
             <Toolbar
                 sx={{
                     display: 'flex',
@@ -74,35 +78,66 @@ export const Layout = ({ children }: LayoutProps) => {
                     borderBottom: '1px solid rgba(0, 0, 0, 0.12)',
                     bgcolor: 'primary.main',
                     color: 'white',
+                    minHeight: 56,
                 }}
             >
+                <ListItemIcon sx={{ color: 'white' }}>
+                    <CalendarToday />
+                </ListItemIcon>
                 <Typography variant="h6" component="div" sx={{ fontWeight: 700 }}>
                     Ders Programı
                 </Typography>
             </Toolbar>
-            <List sx={{ flexGrow: 1 }}>
-                {menuItems.map((item) => (
-                    <ListItem key={item.text} disablePadding>
-                        <ListItemButton
-                            onClick={item.onClick}
-                            sx={{
-                                '&:hover': {
-                                    backgroundColor: 'action.hover',
-                                },
-                            }}
-                        >
-                            <ListItemIcon sx={{ color: 'primary.main' }}>{item.icon}</ListItemIcon>
-                            <ListItemText primary={item.text} />
-                        </ListItemButton>
-                    </ListItem>
-                ))}
+            <List
+                sx={{
+                    py: 0,
+                    flex: 1,
+                    minHeight: 0,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflow: 'hidden',
+                }}
+            >
+                {/*
+                <ListItem disablePadding>
+                    <ListItemButton
+                        sx={{
+                            '&:hover': {
+                                backgroundColor: 'action.hover',
+                            },
+                        }}
+                    >
+                        <ListItemIcon sx={{ color: 'primary.main' }}>
+                            <CalendarToday />
+                        </ListItemIcon>
+                        <ListItemText primary="Ders Programı" />
+                    </ListItemButton>
+                </ListItem>
+                */}
+                <ListItem
+                    disablePadding
+                    sx={{
+                        flex: 1,
+                        minHeight: 0,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'stretch',
+                        overflow: 'hidden',
+                    }}
+                >
+                    <SubjectPalette
+                        subjects={subjects}
+                        subjectTopics={subjectTopics}
+                        onManageClick={() => setManagementOpen(true)}
+                    />
+                </ListItem>
             </List>
-            {/* Tarih ve Saat */}
             <Box
                 sx={{
                     p: 2,
                     borderTop: '1px solid rgba(192, 14, 14, 0.12)',
                     bgcolor: 'grey.50',
+                    flexShrink: 0,
                 }}
             >
                 <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', mb: 0.5 }}>
@@ -121,7 +156,7 @@ export const Layout = ({ children }: LayoutProps) => {
                     })}
                 </Typography>
             </Box>
-        </div>
+        </Box>
     )
 
     return (
@@ -183,13 +218,17 @@ export const Layout = ({ children }: LayoutProps) => {
                     open={mobileOpen}
                     onClose={handleDrawerToggle}
                     ModalProps={{
-                        keepMounted: true, // Better open performance on mobile.
+                        keepMounted: true,
                     }}
                     sx={{
                         display: { xs: 'block', sm: 'none' },
                         '& .MuiDrawer-paper': {
                             boxSizing: 'border-box',
                             width: DRAWER_WIDTH.xs,
+                            height: '100%',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            overflow: 'hidden',
                             borderTopLeftRadius: 0,
                             borderTopRightRadius: 0,
                         },
@@ -208,6 +247,10 @@ export const Layout = ({ children }: LayoutProps) => {
                                 md: DRAWER_WIDTH.md,
                                 lg: DRAWER_WIDTH.lg,
                             },
+                            height: '100%',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            overflow: 'hidden',
                             borderTopLeftRadius: 0,
                             borderTopRightRadius: 0,
                         },
@@ -251,11 +294,15 @@ export const Layout = ({ children }: LayoutProps) => {
                 />
                 {children}
             </Box>
+
             <TopicManagementDialog
-                open={topicDialogOpen}
-                onClose={() => setTopicDialogOpen(false)}
+                open={managementOpen}
+                onClose={() => {
+                    setManagementOpen(false)
+                    setSubjects(loadSubjects())
+                    setSubjectTopics(loadSubjectTopics())
+                }}
                 onSubjectsChange={() => {
-                    // Dersler değiştiğinde sayfayı yenile (subjects state'ini güncellemek için)
                     window.dispatchEvent(new Event('subjects-changed'))
                 }}
             />

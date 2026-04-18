@@ -1,22 +1,24 @@
 import { useState, useEffect } from 'react'
 import {
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    Button,
-    TextField,
-    List,
-    ListItem,
-    ListItemText,
-    IconButton,
+    Drawer,
     Box,
     Typography,
+    IconButton,
+    TextField,
+    List,
+    ListItemButton,
+    ListItemText,
+    ListItemSecondaryAction,
+    Button,
     Divider,
     Stack,
     Chip,
-    Tabs,
-    Tab,
+    Tooltip,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogContentText,
+    DialogActions,
 } from '@mui/material'
 import {
     Add,
@@ -25,6 +27,8 @@ import {
     Close,
     MenuBook,
     Subject as SubjectIcon,
+    Check,
+    Clear,
 } from '@mui/icons-material'
 import type { Subject, Topic } from '../types'
 import {
@@ -37,462 +41,605 @@ import {
     updateTopic,
     deleteTopic,
 } from '../utils/subjectStorage'
+import { getSubjectColor } from '../utils/colors'
+import { useNotification } from '../contexts/NotificationContext'
 
 interface TopicManagementDialogProps {
     open: boolean
     onClose: () => void
-    onSubjectsChange?: () => void // Dersler değiştiğinde çağrılacak callback
+    onSubjectsChange?: () => void
 }
 
-export const TopicManagementDialog = ({ open, onClose, onSubjectsChange }: TopicManagementDialogProps) => {
-    const [tabValue, setTabValue] = useState(0) // 0: Dersler, 1: Konular
-    const [subjects, setSubjects] = useState<Subject[]>([])
-    const [selectedSubject, setSelectedSubject] = useState<Subject | ''>('')
-    const [topics, setTopics] = useState<Topic[]>([])
-    const [editingTopic, setEditingTopic] = useState<Topic | null>(null)
-    const [editingSubject, setEditingSubject] = useState<Subject | null>(null)
-    const [newTopicName, setNewTopicName] = useState('')
-    const [newSubjectName, setNewSubjectName] = useState('')
-    const [editTopicName, setEditTopicName] = useState('')
-    const [editSubjectName, setEditSubjectName] = useState('')
-    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-    const [deleteSubjectDialogOpen, setDeleteSubjectDialogOpen] = useState(false)
-    const [topicToDelete, setTopicToDelete] = useState<string | null>(null)
-    const [subjectToDelete, setSubjectToDelete] = useState<Subject | null>(null)
+export const TopicManagementDialog = ({
+    open,
+    onClose,
+    onSubjectsChange,
+}: TopicManagementDialogProps) => {
+    const { showNotification } = useNotification()
 
-    // Dialog açıldığında dersleri yükle
+    const [subjects, setSubjects] = useState<Subject[]>([])
+    const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null)
+    const [topics, setTopics] = useState<Topic[]>([])
+
+    // Inline-edit states
+    const [editingSubject, setEditingSubject] = useState<Subject | null>(null)
+    const [editSubjectName, setEditSubjectName] = useState('')
+    const [newSubjectName, setNewSubjectName] = useState('')
+
+    const [editingTopic, setEditingTopic] = useState<Topic | null>(null)
+    const [editTopicName, setEditTopicName] = useState('')
+    const [newTopicName, setNewTopicName] = useState('')
+
+    // Confirm delete state
+    const [confirmDeleteSubject, setConfirmDeleteSubject] = useState<Subject | null>(null)
+    const [confirmDeleteTopic, setConfirmDeleteTopic] = useState<Topic | null>(null)
+
     useEffect(() => {
         if (open) {
-            const loadedSubjects = loadSubjects()
-            setSubjects(loadedSubjects)
+            const loaded = loadSubjects()
+            setSubjects(loaded)
+            if (!selectedSubject && loaded.length > 0) {
+                setSelectedSubject(loaded[0])
+            }
         }
     }, [open])
 
-    // Seçili ders değiştiğinde konuları yükle
     useEffect(() => {
         if (selectedSubject) {
-            const subjectTopics = getTopicsBySubject(selectedSubject)
-            setTopics(subjectTopics)
+            setTopics(getTopicsBySubject(selectedSubject))
             setEditingTopic(null)
             setNewTopicName('')
-            setEditTopicName('')
         } else {
             setTopics([])
         }
     }, [selectedSubject])
 
-    const handleAddTopic = () => {
-        if (!selectedSubject || !newTopicName.trim()) return
-
-        const newTopic = addTopicToSubject(selectedSubject, newTopicName.trim())
-        setTopics([...topics, newTopic])
-        setNewTopicName('')
-    }
-
-    const handleStartEdit = (topic: Topic) => {
-        setEditingTopic(topic)
-        setEditTopicName(topic.name)
-    }
-
-    const handleSaveEdit = () => {
-        if (!editingTopic || !editTopicName.trim()) return
-
-        const success = updateTopic(editingTopic.id, editTopicName.trim())
-        if (success) {
-            const updatedTopics = topics.map((t) =>
-                t.id === editingTopic.id ? { ...t, name: editTopicName.trim() } : t
-            )
-            setTopics(updatedTopics)
-            setEditingTopic(null)
-            setEditTopicName('')
-        }
-    }
-
-    const handleCancelEdit = () => {
-        setEditingTopic(null)
-        setEditTopicName('')
-    }
-
-    const handleDeleteClick = (topicId: string) => {
-        setTopicToDelete(topicId)
-        setDeleteDialogOpen(true)
-    }
-
-    const handleConfirmDelete = () => {
-        if (!topicToDelete) return
-
-        const success = deleteTopic(topicToDelete)
-        if (success) {
-            setTopics(topics.filter((t) => t.id !== topicToDelete))
-        }
-        setDeleteDialogOpen(false)
-        setTopicToDelete(null)
-    }
-
-    const handleCancelDelete = () => {
-        setDeleteDialogOpen(false)
-        setTopicToDelete(null)
-    }
-
-    // Ders yönetimi fonksiyonları
+    // --- Subject handlers ---
     const handleAddSubject = () => {
-        if (!newSubjectName.trim()) return
-
-        const newSubject = addSubject(newSubjectName.trim())
-        if (newSubject) {
-            setSubjects([...subjects, newSubject])
+        const name = newSubjectName.trim()
+        if (!name) return
+        const created = addSubject(name)
+        if (created) {
+            const updated = [...subjects, created]
+            setSubjects(updated)
             setNewSubjectName('')
-            onSubjectsChange?.() // Dersler değişti, parent component'i bilgilendir
+            setSelectedSubject(created)
+            onSubjectsChange?.()
         } else {
-            alert('Bu ders zaten mevcut!')
+            showNotification('Bu ders zaten mevcut!', 'warning')
         }
     }
 
-    const handleStartEditSubject = (subject: Subject) => {
-        setEditingSubject(subject)
-        setEditSubjectName(subject)
-    }
-
-    const handleSaveEditSubject = () => {
+    const handleSaveSubjectEdit = () => {
         if (!editingSubject || !editSubjectName.trim()) return
-
         const success = updateSubject(editingSubject, editSubjectName.trim())
         if (success) {
-            const updatedSubjects = subjects.map((s) =>
+            const updated = subjects.map((s) =>
                 s === editingSubject ? (editSubjectName.trim() as Subject) : s
             )
-            setSubjects(updatedSubjects)
-
-            // Eğer seçili ders güncellendiyse, seçimi de güncelle
+            setSubjects(updated)
             if (selectedSubject === editingSubject) {
                 setSelectedSubject(editSubjectName.trim() as Subject)
             }
-
             setEditingSubject(null)
-            setEditSubjectName('')
-            onSubjectsChange?.() // Dersler değişti, parent component'i bilgilendir
+            onSubjectsChange?.()
         } else {
-            alert('Bu ders adı zaten mevcut veya geçersiz!')
+            showNotification('Bu ders adı zaten mevcut!', 'warning')
         }
     }
 
-    const handleCancelEditSubject = () => {
-        setEditingSubject(null)
-        setEditSubjectName('')
-    }
-
-    const handleDeleteSubjectClick = (subject: Subject) => {
-        setSubjectToDelete(subject)
-        setDeleteSubjectDialogOpen(true)
+    const handleDeleteSubject = (subject: Subject) => {
+        setConfirmDeleteSubject(subject)
     }
 
     const handleConfirmDeleteSubject = () => {
-        if (!subjectToDelete) return
-
-        const success = deleteSubject(subjectToDelete)
+        if (!confirmDeleteSubject) return
+        const success = deleteSubject(confirmDeleteSubject)
         if (success) {
-            setSubjects(subjects.filter((s) => s !== subjectToDelete))
-            if (selectedSubject === subjectToDelete) {
-                setSelectedSubject('')
+            const updated = subjects.filter((s) => s !== confirmDeleteSubject)
+            setSubjects(updated)
+            if (selectedSubject === confirmDeleteSubject) {
+                setSelectedSubject(updated[0] ?? null)
             }
-            onSubjectsChange?.() // Dersler değişti, parent component'i bilgilendir
+            onSubjectsChange?.()
+            showNotification(`"${confirmDeleteSubject}" silindi`, 'success')
         }
-        setDeleteSubjectDialogOpen(false)
-        setSubjectToDelete(null)
+        setConfirmDeleteSubject(null)
     }
 
-    const handleCancelDeleteSubject = () => {
-        setDeleteSubjectDialogOpen(false)
-        setSubjectToDelete(null)
+    // --- Topic handlers ---
+    const handleAddTopic = () => {
+        if (!selectedSubject || !newTopicName.trim()) return
+        const created = addTopicToSubject(selectedSubject, newTopicName.trim())
+        setTopics([...topics, created])
+        setNewTopicName('')
+    }
+
+    const handleSaveTopicEdit = () => {
+        if (!editingTopic || !editTopicName.trim()) return
+        const success = updateTopic(editingTopic.id, editTopicName.trim())
+        if (success) {
+            setTopics(topics.map((t) =>
+                t.id === editingTopic.id ? { ...t, name: editTopicName.trim() } : t
+            ))
+            setEditingTopic(null)
+        }
+    }
+
+    const handleDeleteTopic = (topic: Topic) => {
+        setConfirmDeleteTopic(topic)
+    }
+
+    const handleConfirmDeleteTopic = () => {
+        if (!confirmDeleteTopic) return
+        const success = deleteTopic(confirmDeleteTopic.id)
+        if (success) {
+            setTopics(topics.filter((t) => t.id !== confirmDeleteTopic.id))
+            showNotification(`"${confirmDeleteTopic.name}" konusu silindi`, 'success')
+        }
+        setConfirmDeleteTopic(null)
     }
 
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-            <DialogTitle>
-                <Stack direction="row" justifyContent="space-between" alignItems="center">
-                    <Typography variant="h2">Ders ve Konu Yönetimi</Typography>
-                    <IconButton onClick={onClose} size="small">
-                        <Close />
-                    </IconButton>
-                </Stack>
-            </DialogTitle>
-            <DialogContent>
-                <Tabs value={tabValue} onChange={(_, newValue) => setTabValue(newValue)} sx={{ mb: 3 }}>
-                    <Tab icon={<SubjectIcon />} label="Dersler" iconPosition="start" />
-                    <Tab icon={<MenuBook />} label="Konular" iconPosition="start" />
-                </Tabs>
+        <Drawer
+            anchor="right"
+            open={open}
+            onClose={onClose}
+            slotProps={{
+                backdrop: {
+                    sx: {
+                        backdropFilter: 'blur(8px)',
+                        WebkitBackdropFilter: 'blur(8px)',
+                        backgroundColor: 'rgba(0, 0, 0, 0.18)',
+                    },
+                },
+            }}
+            PaperProps={{
+                sx: {
+                    width: { xs: '100%', sm: 640 },
+                    display: 'flex',
+                    flexDirection: 'column',
+                },
+            }}
+        >
+            {/* Drawer Header */}
+            <Box
+                sx={{
+                    px: 3,
+                    py: 2,
+                    bgcolor: 'primary.main',
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexShrink: 0,
+                }}
+            >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <MenuBook />
+                    <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                        Ders ve Konu Yönetimi
+                    </Typography>
+                </Box>
+                <IconButton onClick={onClose} sx={{ color: 'white' }}>
+                    <Close />
+                </IconButton>
+            </Box>
 
-                {tabValue === 0 && (
-                    <Stack spacing={3}>
-                        {/* Yeni Ders Ekleme */}
-                        <Box>
-                            <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
-                                Yeni Ders Ekle
-                            </Typography>
-                            <Stack direction="row" spacing={1}>
-                                <TextField
-                                    fullWidth
-                                    size="small"
-                                    placeholder="Ders adı"
-                                    value={newSubjectName}
-                                    onChange={(e) => setNewSubjectName(e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter') {
-                                            e.preventDefault()
-                                            handleAddSubject()
-                                        }
+            {/* Two-column body */}
+            <Box sx={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+
+                {/* ---- Left: Subjects ---- */}
+                <Box
+                    sx={{
+                        width: 240,
+                        flexShrink: 0,
+                        borderRight: '1px solid',
+                        borderColor: 'divider',
+                        display: 'flex',
+                        flexDirection: 'column',
+                    }}
+                >
+                    <Box
+                        sx={{
+                            px: 2,
+                            py: 1.5,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1,
+                            bgcolor: 'grey.50',
+                            borderBottom: '1px solid',
+                            borderColor: 'divider',
+                        }}
+                    >
+                        <SubjectIcon fontSize="small" color="primary" />
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                            Dersler
+                        </Typography>
+                        <Chip
+                            label={subjects.length}
+                            size="small"
+                            sx={{ ml: 'auto', height: 20, fontSize: '0.7rem' }}
+                        />
+                    </Box>
+
+                    {/* Add subject */}
+                    <Box sx={{ px: 1.5, py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
+                        <Stack direction="row" spacing={0.5}>
+                            <TextField
+                                size="small"
+                                fullWidth
+                                placeholder="Yeni ders adı..."
+                                value={newSubjectName}
+                                onChange={(e) => setNewSubjectName(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') { e.preventDefault(); handleAddSubject() }
+                                }}
+                                sx={{ '& .MuiInputBase-input': { fontSize: '0.8rem' } }}
+                            />
+                            <Tooltip title="Ders Ekle">
+                                <span>
+                                    <IconButton
+                                        size="small"
+                                        color="primary"
+                                        onClick={handleAddSubject}
+                                        disabled={!newSubjectName.trim()}
+                                        sx={{ borderRadius: 1, border: '1px solid', borderColor: 'primary.main' }}
+                                    >
+                                        <Add fontSize="small" />
+                                    </IconButton>
+                                </span>
+                            </Tooltip>
+                        </Stack>
+                    </Box>
+
+                    {/* Subject list */}
+                    <List
+                        dense
+                        disablePadding
+                        sx={{ flex: 1, overflowY: 'auto' }}
+                    >
+                        {subjects.map((subject) => {
+                            const color = getSubjectColor(subject, subjects)
+                            const isSelected = selectedSubject === subject
+                            const isEditing = editingSubject === subject
+
+                            return (
+                                <Box key={subject}>
+                                    {isEditing ? (
+                                        <Box
+                                            sx={{
+                                                px: 1.5,
+                                                py: 0.75,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 0.5,
+                                                bgcolor: 'action.selected',
+                                            }}
+                                        >
+                                            <Box
+                                                sx={{
+                                                    width: 8,
+                                                    height: 8,
+                                                    borderRadius: '50%',
+                                                    bgcolor: color,
+                                                    flexShrink: 0,
+                                                }}
+                                            />
+                                            <TextField
+                                                size="small"
+                                                fullWidth
+                                                value={editSubjectName}
+                                                onChange={(e) => setEditSubjectName(e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') handleSaveSubjectEdit()
+                                                    if (e.key === 'Escape') setEditingSubject(null)
+                                                }}
+                                                autoFocus
+                                                sx={{ '& .MuiInputBase-input': { fontSize: '0.8rem', py: 0.5 } }}
+                                            />
+                                            <IconButton size="small" color="success" onClick={handleSaveSubjectEdit}>
+                                                <Check fontSize="small" />
+                                            </IconButton>
+                                            <IconButton size="small" onClick={() => setEditingSubject(null)}>
+                                                <Clear fontSize="small" />
+                                            </IconButton>
+                                        </Box>
+                                    ) : (
+                                        <ListItemButton
+                                            selected={isSelected}
+                                            onClick={() => setSelectedSubject(subject)}
+                                            sx={{
+                                                px: 1.5,
+                                                py: 0.75,
+                                                '&.Mui-selected': {
+                                                    bgcolor: `${color}1a`,
+                                                    borderRight: `3px solid ${color}`,
+                                                },
+                                                '&.Mui-selected:hover': { bgcolor: `${color}2a` },
+                                            }}
+                                        >
+                                            <Box
+                                                sx={{
+                                                    width: 8,
+                                                    height: 8,
+                                                    borderRadius: '50%',
+                                                    bgcolor: color,
+                                                    flexShrink: 0,
+                                                    mr: 1,
+                                                    boxShadow: `0 0 0 2px ${color}44`,
+                                                }}
+                                            />
+                                            <ListItemText
+                                                primary={subject}
+                                                primaryTypographyProps={{ fontSize: '0.85rem', fontWeight: isSelected ? 700 : 400 }}
+                                            />
+                                            <ListItemSecondaryAction sx={{ opacity: 0, '.MuiListItemButton-root:hover &': { opacity: 1 }, transition: 'opacity 0.15s' }}>
+                                                <Stack direction="row" spacing={0}>
+                                                    <IconButton
+                                                        size="small"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation()
+                                                            setEditingSubject(subject)
+                                                            setEditSubjectName(subject)
+                                                        }}
+                                                    >
+                                                        <Edit sx={{ fontSize: 14 }} />
+                                                    </IconButton>
+                                                    <IconButton
+                                                        size="small"
+                                                        color="error"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation()
+                                                            handleDeleteSubject(subject)
+                                                        }}
+                                                    >
+                                                        <Delete sx={{ fontSize: 14 }} />
+                                                    </IconButton>
+                                                </Stack>
+                                            </ListItemSecondaryAction>
+                                        </ListItemButton>
+                                    )}
+                                    <Divider />
+                                </Box>
+                            )
+                        })}
+                    </List>
+                </Box>
+
+                {/* ---- Right: Topics ---- */}
+                <Box
+                    sx={{
+                        flex: 1,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        overflow: 'hidden',
+                    }}
+                >
+                    {selectedSubject ? (
+                        <>
+                            <Box
+                                sx={{
+                                    px: 2,
+                                    py: 1.5,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 1,
+                                    bgcolor: 'grey.50',
+                                    borderBottom: '1px solid',
+                                    borderColor: 'divider',
+                                }}
+                            >
+                                <Box
+                                    sx={{
+                                        width: 10,
+                                        height: 10,
+                                        borderRadius: '50%',
+                                        bgcolor: getSubjectColor(selectedSubject, subjects),
                                     }}
                                 />
-                                <Button
-                                    variant="contained"
-                                    startIcon={<Add />}
-                                    onClick={handleAddSubject}
-                                    disabled={!newSubjectName.trim()}
-                                >
-                                    Ekle
-                                </Button>
-                            </Stack>
-                        </Box>
-
-                        {/* Ders Listesi */}
-                        <Box>
-                            <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
-                                Dersler ({subjects.length})
-                            </Typography>
-                            {subjects.length === 0 ? (
-                                <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                                    Henüz ders eklenmemiş
+                                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                                    {selectedSubject}
                                 </Typography>
-                            ) : (
-                                <List sx={{ bgcolor: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
-                                    {subjects.map((subject) => (
-                                        <ListItem
-                                            key={subject}
-                                            secondaryAction={
-                                                editingSubject === subject ? null : (
-                                                    <Stack direction="row" spacing={0.5}>
-                                                        <IconButton
-                                                            edge="end"
-                                                            size="small"
-                                                            onClick={() => handleStartEditSubject(subject)}
-                                                        >
-                                                            <Edit fontSize="small" />
-                                                        </IconButton>
-                                                        <IconButton
-                                                            edge="end"
-                                                            size="small"
-                                                            onClick={() => handleDeleteSubjectClick(subject)}
-                                                            color="error"
-                                                        >
-                                                            <Delete fontSize="small" />
-                                                        </IconButton>
-                                                    </Stack>
-                                                )
-                                            }
-                                        >
-                                            {editingSubject === subject ? (
-                                                <Stack direction="row" spacing={1} sx={{ width: '100%' }}>
+                                <Typography variant="caption" color="text.secondary">
+                                    — Konular
+                                </Typography>
+                                <Chip
+                                    label={topics.length}
+                                    size="small"
+                                    sx={{ ml: 'auto', height: 20, fontSize: '0.7rem' }}
+                                />
+                            </Box>
+
+                            {/* Add topic */}
+                            <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
+                                <Stack direction="row" spacing={1}>
+                                    <TextField
+                                        size="small"
+                                        fullWidth
+                                        placeholder="Yeni konu adı..."
+                                        value={newTopicName}
+                                        onChange={(e) => setNewTopicName(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') { e.preventDefault(); handleAddTopic() }
+                                        }}
+                                    />
+                                    <Button
+                                        variant="contained"
+                                        size="small"
+                                        startIcon={<Add />}
+                                        onClick={handleAddTopic}
+                                        disabled={!newTopicName.trim()}
+                                        sx={{ flexShrink: 0 }}
+                                    >
+                                        Ekle
+                                    </Button>
+                                </Stack>
+                            </Box>
+
+                            {/* Topic list */}
+                            <List dense disablePadding sx={{ flex: 1, overflowY: 'auto' }}>
+                                {topics.length === 0 ? (
+                                    <Box sx={{ p: 4, textAlign: 'center' }}>
+                                        <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                                            Bu ders için henüz konu eklenmemiş.
+                                        </Typography>
+                                    </Box>
+                                ) : (
+                                    topics.map((topic) => (
+                                        <Box key={topic.id}>
+                                            {editingTopic?.id === topic.id ? (
+                                                <Box
+                                                    sx={{
+                                                        px: 2,
+                                                        py: 0.75,
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: 1,
+                                                        bgcolor: 'action.selected',
+                                                    }}
+                                                >
                                                     <TextField
-                                                        fullWidth
                                                         size="small"
-                                                        value={editSubjectName}
-                                                        onChange={(e) => setEditSubjectName(e.target.value)}
+                                                        fullWidth
+                                                        value={editTopicName}
+                                                        onChange={(e) => setEditTopicName(e.target.value)}
                                                         onKeyDown={(e) => {
-                                                            if (e.key === 'Enter') {
-                                                                e.preventDefault()
-                                                                handleSaveEditSubject()
-                                                            } else if (e.key === 'Escape') {
-                                                                e.preventDefault()
-                                                                handleCancelEditSubject()
-                                                            }
+                                                            if (e.key === 'Enter') handleSaveTopicEdit()
+                                                            if (e.key === 'Escape') setEditingTopic(null)
                                                         }}
                                                         autoFocus
                                                     />
-                                                    <Button size="small" onClick={handleSaveEditSubject}>
-                                                        Kaydet
-                                                    </Button>
-                                                    <Button size="small" onClick={handleCancelEditSubject}>
-                                                        İptal
-                                                    </Button>
-                                                </Stack>
+                                                    <IconButton size="small" color="success" onClick={handleSaveTopicEdit}>
+                                                        <Check fontSize="small" />
+                                                    </IconButton>
+                                                    <IconButton size="small" onClick={() => setEditingTopic(null)}>
+                                                        <Clear fontSize="small" />
+                                                    </IconButton>
+                                                </Box>
                                             ) : (
-                                                <ListItemText primary={subject} />
-                                            )}
-                                        </ListItem>
-                                    ))}
-                                </List>
-                            )}
-                        </Box>
-                    </Stack>
-                )}
-
-                {tabValue === 1 && (
-                    <Stack spacing={3}>
-                        {/* Ders Seçimi */}
-                        <Box>
-                            <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
-                                Ders Seçiniz
-                            </Typography>
-                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                                {subjects.map((subject) => (
-                                    <Chip
-                                        key={subject}
-                                        label={subject}
-                                        onClick={() => setSelectedSubject(subject)}
-                                        color={selectedSubject === subject ? 'primary' : 'default'}
-                                        variant={selectedSubject === subject ? 'filled' : 'outlined'}
-                                    />
-                                ))}
-                            </Box>
-                        </Box>
-
-                        {selectedSubject && (
-                            <>
-                                <Divider />
-
-                                {/* Yeni Konu Ekleme */}
-                                <Box>
-                                    <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
-                                        Yeni Konu Ekle
-                                    </Typography>
-                                    <Stack direction="row" spacing={1}>
-                                        <TextField
-                                            fullWidth
-                                            size="small"
-                                            placeholder="Konu adı"
-                                            value={newTopicName}
-                                            onChange={(e) => setNewTopicName(e.target.value)}
-                                            onKeyDown={(e) => {
-                                                if (e.key === 'Enter') {
-                                                    e.preventDefault()
-                                                    handleAddTopic()
-                                                }
-                                            }}
-                                        />
-                                        <Button
-                                            variant="contained"
-                                            startIcon={<Add />}
-                                            onClick={handleAddTopic}
-                                            disabled={!newTopicName.trim()}
-                                        >
-                                            Ekle
-                                        </Button>
-                                    </Stack>
-                                </Box>
-
-                                {/* Konu Listesi */}
-                                <Box>
-                                    <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
-                                        {selectedSubject} - Konular ({topics.length})
-                                    </Typography>
-                                    {topics.length === 0 ? (
-                                        <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                                            Henüz konu eklenmemiş
-                                        </Typography>
-                                    ) : (
-                                        <List sx={{ bgcolor: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
-                                            {topics.map((topic) => (
-                                                <ListItem
-                                                    key={topic.id}
-                                                    secondaryAction={
-                                                        editingTopic?.id === topic.id ? null : (
-                                                            <Stack direction="row" spacing={0.5}>
-                                                                <IconButton
-                                                                    edge="end"
-                                                                    size="small"
-                                                                    onClick={() => handleStartEdit(topic)}
-                                                                >
-                                                                    <Edit fontSize="small" />
-                                                                </IconButton>
-                                                                <IconButton
-                                                                    edge="end"
-                                                                    size="small"
-                                                                    onClick={() => handleDeleteClick(topic.id)}
-                                                                    color="error"
-                                                                >
-                                                                    <Delete fontSize="small" />
-                                                                </IconButton>
-                                                            </Stack>
-                                                        )
-                                                    }
+                                                <ListItemButton
+                                                    sx={{ px: 2, py: 0.75, '&:hover .topic-actions': { opacity: 1 } }}
                                                 >
-                                                    {editingTopic?.id === topic.id ? (
-                                                        <Stack direction="row" spacing={1} sx={{ width: '100%' }}>
-                                                            <TextField
-                                                                fullWidth
+                                                    <ListItemText
+                                                        primary={topic.name}
+                                                        primaryTypographyProps={{ fontSize: '0.85rem' }}
+                                                    />
+                                                    <ListItemSecondaryAction
+                                                        className="topic-actions"
+                                                        sx={{ opacity: 0, transition: 'opacity 0.15s' }}
+                                                    >
+                                                        <Stack direction="row" spacing={0}>
+                                                            <IconButton
                                                                 size="small"
-                                                                value={editTopicName}
-                                                                onChange={(e) => setEditTopicName(e.target.value)}
-                                                                onKeyDown={(e) => {
-                                                                    if (e.key === 'Enter') {
-                                                                        e.preventDefault()
-                                                                        handleSaveEdit()
-                                                                    } else if (e.key === 'Escape') {
-                                                                        e.preventDefault()
-                                                                        handleCancelEdit()
-                                                                    }
+                                                                onClick={() => {
+                                                                    setEditingTopic(topic)
+                                                                    setEditTopicName(topic.name)
                                                                 }}
-                                                                autoFocus
-                                                            />
-                                                            <Button size="small" onClick={handleSaveEdit}>
-                                                                Kaydet
-                                                            </Button>
-                                                            <Button size="small" onClick={handleCancelEdit}>
-                                                                İptal
-                                                            </Button>
+                                                            >
+                                                                <Edit sx={{ fontSize: 14 }} />
+                                                            </IconButton>
+                                                            <IconButton
+                                                                size="small"
+                                                                color="error"
+                                                                onClick={() => handleDeleteTopic(topic)}
+                                                            >
+                                                                <Delete sx={{ fontSize: 14 }} />
+                                                            </IconButton>
                                                         </Stack>
-                                                    ) : (
-                                                        <ListItemText primary={topic.name} />
-                                                    )}
-                                                </ListItem>
-                                            ))}
-                                        </List>
-                                    )}
-                                </Box>
-                            </>
-                        )}
-                    </Stack>
-                )}
-            </DialogContent>
-            <DialogActions>
-                <Button onClick={onClose}>Kapat</Button>
-            </DialogActions>
+                                                    </ListItemSecondaryAction>
+                                                </ListItemButton>
+                                            )}
+                                            <Divider />
+                                        </Box>
+                                    ))
+                                )}
+                            </List>
+                        </>
+                    ) : (
+                        <Box
+                            sx={{
+                                flex: 1,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                p: 4,
+                                color: 'text.disabled',
+                            }}
+                        >
+                            <MenuBook sx={{ fontSize: 56, mb: 2 }} />
+                            <Typography variant="body2" sx={{ textAlign: 'center' }}>
+                                Konularını görmek için soldaki listeden bir ders seçin.
+                            </Typography>
+                        </Box>
+                    )}
+                </Box>
+            </Box>
 
-            {/* Delete Topic Confirmation Dialog */}
-            <Dialog open={deleteDialogOpen} onClose={handleCancelDelete}>
-                <DialogTitle>Konuyu Sil</DialogTitle>
-                <DialogContent>
-                    <Typography>
-                        Bu konuyu silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
-                    </Typography>
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={handleCancelDelete}>İptal</Button>
-                    <Button onClick={handleConfirmDelete} color="error" variant="contained">
-                        Sil
-                    </Button>
-                </DialogActions>
-            </Dialog>
+            {/* Footer */}
+            <Box
+                sx={{
+                    px: 3,
+                    py: 1.5,
+                    borderTop: '1px solid',
+                    borderColor: 'divider',
+                    display: 'flex',
+                    justifyContent: 'flex-end',
+                    flexShrink: 0,
+                    bgcolor: 'grey.50',
+                }}
+            >
+                <Button variant="contained" onClick={onClose}>
+                    Kapat
+                </Button>
+            </Box>
 
-            {/* Delete Subject Confirmation Dialog */}
-            <Dialog open={deleteSubjectDialogOpen} onClose={handleCancelDeleteSubject}>
+            {/* Ders silme onay diyalogu */}
+            <Dialog
+                open={!!confirmDeleteSubject}
+                onClose={() => setConfirmDeleteSubject(null)}
+                maxWidth="xs"
+                fullWidth
+            >
                 <DialogTitle>Dersi Sil</DialogTitle>
                 <DialogContent>
-                    <Typography>
-                        <strong>{subjectToDelete}</strong> dersini silmek istediğinize emin misiniz?
-                    </Typography>
-                    <Typography variant="body2" color="error" sx={{ mt: 2 }}>
-                        ⚠️ Bu derse ait tüm konular da silinecektir. Bu işlem geri alınamaz.
-                    </Typography>
+                    <DialogContentText>
+                        <strong>{confirmDeleteSubject}</strong> dersini silmek istediğinizden emin misiniz?
+                    </DialogContentText>
+                    <DialogContentText sx={{ mt: 1, color: 'error.main', fontSize: '0.85rem' }}>
+                        ⚠️ Bu derse ait tüm konular da kalıcı olarak silinecektir.
+                    </DialogContentText>
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={handleCancelDeleteSubject}>İptal</Button>
+                    <Button onClick={() => setConfirmDeleteSubject(null)}>İptal</Button>
                     <Button onClick={handleConfirmDeleteSubject} color="error" variant="contained">
                         Sil
                     </Button>
                 </DialogActions>
             </Dialog>
-        </Dialog>
+
+            {/* Konu silme onay diyalogu */}
+            <Dialog
+                open={!!confirmDeleteTopic}
+                onClose={() => setConfirmDeleteTopic(null)}
+                maxWidth="xs"
+                fullWidth
+            >
+                <DialogTitle>Konuyu Sil</DialogTitle>
+                <DialogContent>
+                    <DialogContentText>
+                        <strong>{confirmDeleteTopic?.name}</strong> konusunu silmek istediğinizden emin misiniz?
+                        Bu işlem geri alınamaz.
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setConfirmDeleteTopic(null)}>İptal</Button>
+                    <Button onClick={handleConfirmDeleteTopic} color="error" variant="contained">
+                        Sil
+                    </Button>
+                </DialogActions>
+            </Dialog>
+        </Drawer>
     )
 }
-
