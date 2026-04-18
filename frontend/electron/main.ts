@@ -40,7 +40,10 @@ function createWindow() {
             nodeIntegration: false,
             contextIsolation: true,
         },
-        icon: join(__dirname, '../public/vite.svg'), // İkon dosyası
+        icon: join(
+            __dirname,
+            app.isPackaged ? '../dist/icon.png' : '../public/icon.png',
+        ),
         titleBarStyle: 'default',
         show: false, // Pencere hazır olana kadar gizle
     })
